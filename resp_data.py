@@ -8,5 +8,3 @@ Errors = TypedDict("Errors",{"code": int,"message": str})
 
 RespError = TypedDict("RespError",{"success": bool,"error": Errors})
 
-
-
