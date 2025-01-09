@@ -171,3 +171,4 @@ cython_debug/
 .pypirc
 
 test_token.txt
+just_test.py
