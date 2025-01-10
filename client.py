@@ -1,3 +1,39 @@
+"""
+Solscan API Client
+
+This module provides a client for interacting with the Solscan API, both public and pro endpoints.
+
+The client handles authentication, request formatting, and response parsing. It provides strongly typed 
+responses using TypedDict definitions.
+
+Example:
+    >>> client = Client("auth_token.txt") 
+    >>> chain_info = client.chain_info()
+    >>> print(chain_info["blockHeight"])
+    12345
+
+The client can be initialized either with:
+- A direct auth token string: Client("my_auth_token")
+- A file containing the token: Client("auth_token.txt")
+
+Most methods return typed dictionaries containing the response data. See individual method docstrings
+for details on parameters and return types.
+
+Common HTTP errors are handled with descriptive exceptions:
+- 401: Unauthorized - Invalid/missing auth token
+- 403: Forbidden - Account lacks permission  
+- 404: Not Found - Invalid endpoint/resource
+- 429: Too Many Requests - Rate limit exceeded
+- 500: Internal Server Error - Server error
+
+The client provides methods for:
+- Chain info and statistics
+- Account details and history
+- Token details and transfers
+- NFT collections and activities
+- Market data and analytics
+"""
+
 from enum import Enum
 from typing import Any, TypeVar, TypedDict, List
 import requests
@@ -666,6 +702,33 @@ NFTCollectionItem = TypedDict("NFTCollectionItem", {
 })
 
 class Client:
+    """A client for interacting with the Solscan API.
+    
+    This client provides methods to query both the public and pro Solscan APIs.
+    It handles authentication and request formatting.
+
+    The client can be initialized either with an auth token string directly:
+        client = Client("my_auth_token")
+        
+    Or with a file containing the auth token:
+        client = Client("auth_token.txt")
+
+    Most methods return typed dictionaries containing the response data.
+    See the individual method docstrings for details on parameters and return types.
+
+    The client handles common HTTP errors and will raise exceptions with descriptive messages:
+        - 401: Unauthorized - Invalid or missing auth token
+        - 403: Forbidden - Account lacks permission
+        - 404: Not Found - Invalid endpoint or resource not found  
+        - 429: Too Many Requests - Rate limit exceeded
+        - 500: Internal Server Error - Server-side error
+
+    Example:
+        >>> client = Client("auth_token.txt")
+        >>> chain_info = client.chain_info()
+        >>> print(chain_info["blockHeight"])
+        12345
+    """
     def __init__(self, auth_token: str):
         self.__headers = {"content-type": "application/json", "token": auth_token}
             
@@ -676,6 +739,26 @@ class Client:
             self.__headers = {"content-type": "application/json", "token": auth_token}
 
     def get(self, base_url: str, path: str, kwargs: dict[str, Any]=None, export: bool = False) -> D:
+        """Makes a GET request to the Solscan API.
+
+        Args:
+            base_url (str): The base URL for the API (public or pro)
+            path (str): The API endpoint path
+            kwargs (dict[str, Any], optional): Query parameters to include. Defaults to None.
+            export (bool, optional): Whether to return raw response content. Defaults to False.
+
+        Returns:
+            D: The response data, typed according to the endpoint's return type.
+            If export=True, returns the raw response content instead.
+
+        Raises:
+            Exception: If the API request fails, with status code and error message.
+            - 401: Unauthorized - Invalid or missing auth token
+            - 403: Forbidden - Account lacks permission 
+            - 404: Not Found - Invalid endpoint or resource not found
+            - 429: Too Many Requests - Rate limit exceeded
+            - 500: Internal Server Error - Server-side error
+        """
         url = f"{base_url}/{path.lstrip('/')}"
         if kwargs:
             kvs = []
@@ -731,6 +814,38 @@ class Client:
                            page_size: LargePageSize = LargePageSize.PAGE_SIZE_10,
                            sort_order: SortOrder = SortOrder.DESC,
                            ) -> List[Transfer]:
+        """Get account transfer history.
+        
+        Args:
+            address (str): Account address
+            activity_type (AccountActivityType, optional): Filter by activity type. Defaults to None.
+            token_account (str, optional): Filter by token account. Defaults to None.
+            from_address (str, optional): Filter by from address. Defaults to None.
+            to_address (str, optional): Filter by to address. Defaults to None.
+            token (str, optional): Filter by token address. Defaults to None.
+            amount_range (List[int], optional): Filter by amount range [min, max]. Defaults to None.
+            block_time_range (List[int], optional): Filter by block time range [start, end]. Defaults to None.
+            exclude_amount_zero (bool, optional): Whether to exclude zero amount transfers. Defaults to False.
+            flow (Flow, optional): Filter by transfer direction (in/out). Defaults to None.
+            page (int, optional): Page number. Defaults to 1.
+            page_size (LargePageSize, optional): Number of items per page. Defaults to 10.
+            sort_order (SortOrder, optional): Sort order. Defaults to DESC.
+
+        Returns:
+            List[Transfer]: List of transfers
+
+        Example:
+            >>> # Get all transfers for an account
+            >>> client.account_transfers("FG4Y3yX4AAchp1HvNZ7LfzFTewF2f6nDoMDCohTFrdpT")
+
+            >>> # Get only incoming transfers
+            >>> client.account_transfers("FG4Y4yX4AAchp1HvNZ7LfzFTewF2f6nDoMDCohTFrdpT",
+            ...                         flow=Flow.IN)
+
+            >>> # Get transfers within a time range
+            >>> client.account_transfers("FG4Y4yX4AAchp1HvNZ7LfzFTewF2f6nDoMDCohTFrdpT", 
+            ...                         block_time_range=[1640995200, 1641081600])
+        """
         args = locals()
         args["from"] = args.pop("from_address")
         args["to"] = args.pop("to_address")
@@ -758,6 +873,36 @@ class Client:
                         page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10,
                         sort_by: SortBy = SortBy.BLOCK_TIME,
                         sort_order: SortOrder = SortOrder.DESC) -> List[DefiActivity]:
+        """Get DeFi activities for an account.
+
+        Args:
+            address (str): Account address
+            activity_type (ActivityType, optional): Filter by activity type. Defaults to None.
+            from_address (str, optional): Filter by from address. Defaults to None.
+            platform (List[str], optional): Filter by platform names. Defaults to None.
+            source (List[str], optional): Filter by source names. Defaults to None.
+            token (str, optional): Filter by token address. Defaults to None.
+            block_time_range (List[int], optional): Filter by block time range [start, end]. Defaults to None.
+            page (int, optional): Page number. Defaults to 1.
+            page_size (SmallPageSize, optional): Number of items per page. Defaults to 10.
+            sort_by (SortBy, optional): Sort field. Defaults to block_time.
+            sort_order (SortOrder, optional): Sort order. Defaults to DESC.
+
+        Returns:
+            List[DefiActivity]: List of DeFi activities
+
+        Example:
+            >>> # Get all DeFi activities for an account
+            >>> client.account_defi_activities("FG4Y3yX4AAchp1HvNZ7LfzFTewF2f6nDoMDCohTFrdpT")
+
+            >>> # Get swap activities only
+            >>> client.account_defi_activities("FG4Y3yX4AAchp1HvNZ7LfzFTewF2f6nDoMDCohTFrdpT",
+            ...                               activity_type=ActivityType.ACCOUNT_ACTIVITY_SWAP)
+
+            >>> # Get activities within a time range
+            >>> client.account_defi_activities("FG4Y3yX4AAchp1HvNZ7LfzFTewF2f6nDoMDCohTFrdpT",
+            ...                               block_time_range=[1640995200, 1641081600])
+        """
         args = locals()
         args["from"] = args.pop("from_address")
         args["block_time"] = args.pop("block_time_range")
@@ -774,6 +919,35 @@ class Client:
                         flow: Flow = None,
                         sort_by: SortBy = SortBy.BLOCK_TIME,
                         sort_order: SortOrder = SortOrder.DESC) -> List[AccountChangeActivity]:
+        """Get balance change activities for an account.
+
+        Args:
+            address (str): Account address
+            token (str, optional): Filter by token address. Defaults to None.
+            amount_range (List[int], optional): Filter by amount range [min, max]. Defaults to None.
+            block_time_range (List[int], optional): Filter by block time range [start, end]. Defaults to None.
+            page (int, optional): Page number. Defaults to 1.
+            page_size (LargePageSize, optional): Number of items per page. Defaults to 10.
+            remove_spam (bool, optional): Whether to remove spam transactions. Defaults to True.
+            flow (Flow, optional): Filter by flow direction (in/out). Defaults to None.
+            sort_by (SortBy, optional): Sort field. Defaults to block_time.
+            sort_order (SortOrder, optional): Sort order. Defaults to DESC.
+
+        Returns:
+            List[AccountChangeActivity]: List of balance change activities
+
+        Example:
+            >>> # Get all balance changes for an account
+            >>> client.account_balance_changes("FG4Y3yX4AAchp1HvNZ7LfzFTewF2f6nDoMDCohTFrdpT")
+
+            >>> # Get changes for a specific token
+            >>> client.account_balance_changes("FG4Y3yX4AAchp1HvNZ7LfzFTewF2f6nDoMDCohTFrdpT",
+            ...                               token="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
+
+            >>> # Get changes within an amount range
+            >>> client.account_balance_changes("FG4Y3yX4AAchp1HvNZ7LfzFTewF2f6nDoMDCohTFrdpT",
+            ...                               amount_range=[1000000, 10000000])
+        """
         args = locals()
         args["amount"] = args.pop("amount_range")
         args["block_time"] = args.pop("block_time_range")
@@ -802,6 +976,37 @@ class Client:
                                 block_time_range:List[int] = None,
                                 exclude_amount_zero:bool=False,
                                 flow: Flow = None) -> bytes:
+        """Export account transfer history to CSV.
+        
+        Args:
+            address (str): Account address to get transfers for
+            activity_type (AccountActivityType, optional): Filter by activity type. Defaults to None.
+            token_account (str, optional): Filter by token account. Defaults to None.
+            from_address (str, optional): Filter by sender address. Defaults to None.
+            to_address (str, optional): Filter by recipient address. Defaults to None.
+            token (str, optional): Filter by token mint address. Defaults to None.
+            amount_range (List[int], optional): Filter by amount range [min, max]. Defaults to None.
+            block_time_range (List[int], optional): Filter by block time range [start, end]. Defaults to None.
+            exclude_amount_zero (bool, optional): Whether to exclude zero amount transfers. Defaults to False.
+            flow (Flow, optional): Filter by flow direction (in/out). Defaults to None.
+
+        Returns:
+            bytes: CSV file content as bytes
+
+        Example:
+            >>> # Export all transfers for an account
+            >>> csv_data = client.account_transfer_export("FG4Y3yX4AAchp1HvNZ7LfzFTewF2f6nDoMDCohTFrdpT")
+            >>> with open("transfers.csv", "wb") as f:
+            ...     f.write(csv_data)
+
+            >>> # Export filtered transfers
+            >>> csv_data = client.account_transfer_export(
+            ...     "FG4Y3yX4AAchp1HvNZ7LfzFTewF2f6nDoMDCohTFrdpT",
+            ...     activity_type=AccountActivityType.TRANSFER,
+            ...     token="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            ...     amount_range=[1000000, 10000000]
+            ... )
+        """
         args = locals()
         args["amount"] = args.pop("amount_range")
         args["block_time"] = args.pop("block_time_range")
@@ -819,6 +1024,38 @@ class Client:
                        page_size:LargePageSize = LargePageSize.PAGE_SIZE_10,
                        sort_by:SortBy = SortBy.BLOCK_TIME,
                        sort_order:SortOrder = SortOrder.DESC) -> List[Transfer]:
+        """Get token transfer history.
+        
+        Args:
+            address (str): Token address to get transfers for
+            activity_type (ActivityType, optional): Filter by activity type. Defaults to None.
+            from_address (str, optional): Filter by sender address. Defaults to None.
+            to_address (str, optional): Filter by recipient address. Defaults to None.
+            amount_range (List[int], optional): Filter by amount range [min, max]. Defaults to None.
+            block_time_range (List[int], optional): Filter by block time range [start, end]. Defaults to None.
+            exclude_amount_zero (bool, optional): Whether to exclude zero amount transfers. Defaults to False.
+            page (int, optional): Page number. Defaults to 1.
+            page_size (LargePageSize, optional): Number of results per page. Defaults to 10.
+            sort_by (SortBy, optional): Field to sort by. Defaults to block_time.
+            sort_order (SortOrder, optional): Sort order (asc/desc). Defaults to DESC.
+
+        Returns:
+            List[Transfer]: List of token transfers
+
+        Example:
+            >>> # Get all transfers for a token
+            >>> transfers = client.token_trasfers("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
+            >>> for transfer in transfers:
+            ...     print(f"{transfer['from_address']} -> {transfer['to_address']}: {transfer['amount']}")
+
+            >>> # Get filtered transfers
+            >>> transfers = client.token_trasfers(
+            ...     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            ...     activity_type=ActivityType.TOKEN_ACTIVITY_TRANSFER,
+            ...     amount_range=[1000000, 10000000],
+            ...     page_size=LargePageSize.PAGE_SIZE_100
+            ... )
+        """
         args = locals()
         args["from"] = args.pop("from_address")
         args["to"] = args.pop("to_address")
@@ -838,6 +1075,38 @@ class Client:
                              page_size:LargePageSize = LargePageSize.PAGE_SIZE_10,
                              sort_by:SortBy = SortBy.BLOCK_TIME,
                              sort_order:SortOrder = SortOrder.DESC) -> List[DefiActivity]:
+        """Get DeFi activities for a token.
+        
+        Args:
+            address (str): Token address to get activities for
+            from_address (str, optional): Filter by sender address. Defaults to None.
+            platform (List[str], optional): Filter by platform names. Defaults to None.
+            source (List[str], optional): Filter by source names. Defaults to None.
+            activity_type (ActivityType, optional): Filter by activity type. Defaults to None.
+            token (str, optional): Filter by token address. Defaults to None.
+            block_time_range (List[int], optional): Filter by block time range [start, end]. Defaults to None.
+            page (int, optional): Page number. Defaults to 1.
+            page_size (LargePageSize, optional): Number of results per page. Defaults to 10.
+            sort_by (SortBy, optional): Field to sort by. Defaults to block_time.
+            sort_order (SortOrder, optional): Sort order (asc/desc). Defaults to DESC.
+
+        Returns:
+            List[DefiActivity]: List of DeFi activities
+
+        Example:
+            >>> # Get all DeFi activities for a token
+            >>> activities = client.token_defi_activities("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
+            >>> for activity in activities:
+            ...     print(f"{activity['activity_type']}: {activity['amount_info']}")
+
+            >>> # Get filtered activities
+            >>> activities = client.token_defi_activities(
+            ...     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            ...     platform=["Raydium"],
+            ...     activity_type=ActivityType.ACCOUNT_ACTIVITY_SWAP,
+            ...     page_size=LargePageSize.PAGE_SIZE_100
+            ... )
+        """
         args = locals()
         args["from"] = args.pop("from_address")
         args["block_time"] = args.pop("block_time_range")
@@ -954,6 +1223,37 @@ class Client:
                     block_time_range: List[int] = None,
                     page: int = 1,
                     page_size: LargePageSize = LargePageSize.PAGE_SIZE_100) -> List[NFTActivity]:
+        """Get NFT activity history.
+        
+        Args:
+            from_address (str, optional): Filter by sender address. Defaults to None.
+            to_address (str, optional): Filter by recipient address. Defaults to None.
+            source (List[str], optional): Filter by marketplace source. Defaults to None.
+            activity_type (NFTActivityType, optional): Filter by activity type. Defaults to None.
+            token (str, optional): Filter by NFT token address. Defaults to None.
+            collection (str, optional): Filter by collection address. Defaults to None.
+            currency_token (str, optional): Filter by currency token address. Defaults to None.
+            price_range (List[float], optional): Filter by price range [min, max]. Defaults to None.
+            block_time_range (List[int], optional): Filter by block time range [start, end]. Defaults to None.
+            page (int, optional): Page number. Defaults to 1.
+            page_size (LargePageSize, optional): Number of results per page. Defaults to 100.
+
+        Returns:
+            List[NFTActivity]: List of NFT activities
+
+        Example:
+            >>> # Get all NFT activities
+            >>> client.nft_activity()
+
+            >>> # Get activities for a specific collection
+            >>> client.nft_activity(
+            ...     collection="fc8dd31116b25e6690d83f6fb102e67ac6a9364dc2b96285d636aed462c4a983",
+            ...     activity_type=NFTActivityType.SOLD
+            ... )
+
+            >>> # Get activities within a price range
+            >>> client.nft_activity(price_range=[1.5, 10.0])
+        """
         args = locals()
         args["from"] = args.pop("from_address")
         args["to"] = args.pop("to_address")
