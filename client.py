@@ -1381,4 +1381,4 @@ if __name__ == "__main__":
     home = str(pathlib.Path.home())
     token_file = os.path.join(home, "test_tokens/solscan_auth_token")
     client = Client(token_file)
-    print(client.nft_collection_items("fc8dd31116b25e6690d83f6fb102e67ac6a9364dc2b96285d636aed462c4a983"))
+    print(asyncio.run(client.massive_token_transfers, "HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=1000))
