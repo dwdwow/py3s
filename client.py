@@ -768,7 +768,7 @@ class Client:
             auth_token = decrypted_bytes.decode('utf-8')
         self.__headers = {"content-type": "application/json", "token": auth_token}
 
-    def get(self, base_url: str, path: str, kwargs: dict[str, Any]=None, export: bool = False) -> D:
+    async def get(self, base_url: str, path: str, kwargs: dict[str, Any]=None, export: bool = False) -> D:
         """Makes a GET request to the Solscan API.
 
         Args:
@@ -826,10 +826,10 @@ class Client:
         else:
             raise Exception(f"{resp.status_code}: {resp.text}")
 
-    def chain_info(self) -> RespData[ChainInfo]:
-        return self.get(public_base_url, "chaininfo")
+    async def chain_info(self) -> RespData[ChainInfo]:
+        return await self.get(public_base_url, "chaininfo")
     
-    def account_transfers(self,
+    async def account_transfers(self,
                            address: str,
                            activity_type: AccountActivityType = None,
                            token_account: str = None,
@@ -881,17 +881,17 @@ class Client:
         args["to"] = args.pop("to_address")
         args["amount"] = args.pop("amount_range")
         args["block_time"] = args.pop("block_time_range")
-        return self.get(pro_base_url, "/account/transfer", args)
+        return await self.get(pro_base_url, "/account/transfer", args)
     
-    def account_token_accounts(self,
+    async def account_token_accounts(self,
                        address: str,
                        type: TokenType = TokenType.TOKEN,
                        page: int = 1,
                        page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10,
                        hide_zero: bool = False) -> List[TokenAccount]:
-        return self.get(pro_base_url, "/account/token-accounts", locals())
+        return await self.get(pro_base_url, "/account/token-accounts", locals())
     
-    def account_defi_activities(self,
+    async def account_defi_activities(self,
                         address: str,
                         activity_type: ActivityType = None,
                         from_address: str = None,
@@ -936,9 +936,9 @@ class Client:
         args = locals()
         args["from"] = args.pop("from_address")
         args["block_time"] = args.pop("block_time_range")
-        return self.get(pro_base_url, "/account/defi/activities", args)
+        return await self.get(pro_base_url, "/account/defi/activities", args)
     
-    def account_balance_changes(self,
+    async def account_balance_changes(self,
                         address: str,
                         token: str = None,
                         amount_range: List[int] = None,
@@ -981,21 +981,21 @@ class Client:
         args = locals()
         args["amount"] = args.pop("amount_range")
         args["block_time"] = args.pop("block_time_range")
-        return self.get(pro_base_url, "/account/balance_change", args)
+        return await self.get(pro_base_url, "/account/balance_change", args)
     
-    def account_transactions(self, address: str, limit: SmallPageSize=SmallPageSize.PAGE_SIZE_10) -> List[Transaction]:
-        return self.get(pro_base_url, "/account/transactions", locals())
+    async def account_transactions(self, address: str, limit: SmallPageSize=SmallPageSize.PAGE_SIZE_10) -> List[Transaction]:
+        return await self.get(pro_base_url, "/account/transactions", locals())
     
-    def account_stakes(self, address: str, page: int = 1, page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10) -> List[AccountStake]:
-        return self.get(pro_base_url, "/account/stake", locals())
+    async def account_stakes(self, address: str, page: int = 1, page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10) -> List[AccountStake]:
+        return await self.get(pro_base_url, "/account/stake", locals())
     
-    def account_detail(self, address: str) -> AccountDetail:
-        return self.get(pro_base_url, "/account/detail", locals())
+    async def account_detail(self, address: str) -> AccountDetail:
+        return await self.get(pro_base_url, "/account/detail", locals())
     
-    def account_rewards_export(self, address:str, time_from:int, time_to:int) -> bytes:
-        return self.get(pro_base_url, "/account/reward/export", locals(), export=True)
+    async def account_rewards_export(self, address:str, time_from:int, time_to:int) -> bytes:
+        return await self.get(pro_base_url, "/account/reward/export", locals(), export=True)
                              
-    def account_transfer_export(self, 
+    async def account_transfer_export(self, 
                                 address:str,
                                 activity_type:AccountActivityType = None,
                                 token_account:str = None,
@@ -1040,9 +1040,9 @@ class Client:
         args = locals()
         args["amount"] = args.pop("amount_range")
         args["block_time"] = args.pop("block_time_range")
-        return self.get(pro_base_url, "/account/transfer/export", args, export=True)
+        return await self.get(pro_base_url, "/account/transfer/export", args, export=True)
     
-    def token_transfers(self,
+    async def token_transfers(self,
                        address:str,
                        activity_type:ActivityType = None,
                        from_address:str = None,
@@ -1091,9 +1091,9 @@ class Client:
         args["to"] = args.pop("to_address")
         args["amount"] = args.pop("amount_range")
         args["block_time"] = args.pop("block_time_range")
-        return self.get(pro_base_url, "/token/transfer", args)
+        return await self.get(pro_base_url, "/token/transfer", args)
 
-    def token_defi_activities(self,
+    async def token_defi_activities(self,
                              address:str,
                              from_address:str = None,
                              platform:List[str] = None,
@@ -1140,9 +1140,9 @@ class Client:
         args = locals()
         args["from"] = args.pop("from_address")
         args["block_time"] = args.pop("block_time_range")
-        return self.get(pro_base_url, "/token/defi/activities", args)
+        return await self.get(pro_base_url, "/token/defi/activities", args)
     
-    def token_markets(self,
+    async def token_markets(self,
                       token_pair:List[str],
                       sort_by:MarketSortBy = MarketSortBy.VOLUME,
                       program:str = None,
@@ -1150,19 +1150,19 @@ class Client:
                       page_size:LargePageSize = LargePageSize.PAGE_SIZE_100) -> List[Market]:
         args = locals()
         args["token"] = args.pop("token_pair")
-        return self.get(pro_base_url, "/token/markets", args)
+        return await self.get(pro_base_url, "/token/markets", args)
 
-    def token_list(self,
+    async def token_list(self,
                    sort_by:TokenSortBy = TokenSortBy.PRICE,
                    sort_order:SortOrder = SortOrder.DESC,
                    page:int = 1,
                    page_size:LargePageSize = LargePageSize.PAGE_SIZE_100) -> List[Token]:
-        return self.get(pro_base_url, "/token/list", locals())
+        return await self.get(pro_base_url, "/token/list", locals())
     
-    def token_trending(self, limit:int = 10) -> List[Token]:
-        return self.get(pro_base_url, "/token/trending", locals())
+    async def token_trending(self, limit:int = 10) -> List[Token]:
+        return await self.get(pro_base_url, "/token/trending", locals())
 
-    def token_price(self, address: str, time_range: List[int] = None) -> List[TokenPrice]:
+    async def token_price(self, address: str, time_range: List[int] = None) -> List[TokenPrice]:
         """Get token price history.
         
         Args:
@@ -1184,66 +1184,66 @@ class Client:
         """
         args = locals()
         args["time"] = args.pop("time_range")
-        return self.get(pro_base_url, "/token/price", args)
+        return await self.get(pro_base_url, "/token/price", args)
     
-    def token_holders(self,
+    async def token_holders(self,
                         address: str,
                         page: int = 1,
                         page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10,
                         from_amount: str=None,
                         to_amount: str=None) -> tuple[int, List[TokenHolder]]:
-        data = self.get(pro_base_url, "/token/holders", locals())
+        data = await self.get(pro_base_url, "/token/holders", locals())
         return data["total"], data["items"]
     
-    def token_meta(self, address: str) -> TokenMeta:
-        return self.get(pro_base_url, "/token/meta", locals())
+    async def token_meta(self, address: str) -> TokenMeta:
+        return await self.get(pro_base_url, "/token/meta", locals())
     
-    def token_top(self) -> List[TokenTop]:
-        return self.get(pro_base_url, "/token/top", locals())
+    async def token_top(self) -> List[TokenTop]:
+        return await self.get(pro_base_url, "/token/top", locals())
     
-    def tx_last(self, limit: LargePageSize = LargePageSize.PAGE_SIZE_10, filter: TxFilter = TxFilter.ALL) -> List[Transaction]:
-        return self.get(pro_base_url, "/transaction/last", locals())
+    async def tx_last(self, limit: LargePageSize = LargePageSize.PAGE_SIZE_10, filter: TxFilter = TxFilter.ALL) -> List[Transaction]:
+        return await self.get(pro_base_url, "/transaction/last", locals())
 
-    def tx_detail(self, tx: str) -> TransactionDetail:
-        return self.get(pro_base_url, "/transaction/detail", locals())
+    async def tx_detail(self, tx: str) -> TransactionDetail:
+        return await self.get(pro_base_url, "/transaction/detail", locals())
     
-    def tx_actions(self, tx: str) -> TransactionAction:
-        return self.get(pro_base_url, "/transaction/actions", locals())
+    async def tx_actions(self, tx: str) -> TransactionAction:
+        return await self.get(pro_base_url, "/transaction/actions", locals())
 
-    def block_last(self, limit: LargePageSize=LargePageSize.PAGE_SIZE_100) -> BlockDetail:
-        return self.get(pro_base_url, "/block/last", locals())
+    async def block_last(self, limit: LargePageSize=LargePageSize.PAGE_SIZE_100) -> BlockDetail:
+        return await self.get(pro_base_url, "/block/last", locals())
 
-    def block_transactions(self, block: int, page: int = 1, page_size: LargePageSize = LargePageSize.PAGE_SIZE_100) -> tuple[int, List[Transaction]]:
-        data = self.get(pro_base_url, "/block/transactions", locals())
+    async def block_transactions(self, block: int, page: int = 1, page_size: LargePageSize = LargePageSize.PAGE_SIZE_100) -> tuple[int, List[Transaction]]:
+        data = await self.get(pro_base_url, "/block/transactions", locals())
         return data["total"], data["transactions"]
 
-    def block_detail(self, block: int) -> BlockDetail:
-        return self.get(pro_base_url, "/block/detail", locals())
+    async def block_detail(self, block: int) -> BlockDetail:
+        return await self.get(pro_base_url, "/block/detail", locals())
     
-    def pool_market_list(self,
+    async def pool_market_list(self,
                          sort_by: str = "created_time",
                          sort_order: SortOrder = SortOrder.DESC,
                          page: int = 1,
                          page_size: LargePageSize = LargePageSize.PAGE_SIZE_100, 
                          program: str = None,
                          ) -> List[PoolMarket]:
-        return self.get(pro_base_url, "/market/list", locals())
+        return await self.get(pro_base_url, "/market/list", locals())
     
-    def pool_market_info(self, address: str) -> PoolMarketInfo:
-        return self.get(pro_base_url, "/market/info", locals())
+    async def pool_market_info(self, address: str) -> PoolMarketInfo:
+        return await self.get(pro_base_url, "/market/info", locals())
     
-    def pool_market_volume(self, address: str, time_range: List[int] = None) -> PoolMarketVolume:
+    async def pool_market_volume(self, address: str, time_range: List[int] = None) -> PoolMarketVolume:
         args = locals()
         args["time"] = args.pop("time_range")
-        return self.get(pro_base_url, "/market/volume", args)
+        return await self.get(pro_base_url, "/market/volume", args)
 
-    def api_usage(self) -> APIUsage:
-        return self.get(pro_base_url, "/monitor/usage", locals())
+    async def api_usage(self) -> APIUsage:
+        return await self.get(pro_base_url, "/monitor/usage", locals())
 
-    def news_nft(self, filter: str = "created_time", page: int = 1, page_size: TinyPageSize = TinyPageSize.PAGE_SIZE_12) -> List[NFTInfo]:
-        return self.get(pro_base_url, "/nft/news", locals())
+    async def news_nft(self, filter: str = "created_time", page: int = 1, page_size: TinyPageSize = TinyPageSize.PAGE_SIZE_12) -> List[NFTInfo]:
+        return await self.get(pro_base_url, "/nft/news", locals())
     
-    def nft_activity(self,
+    async def nft_activity(self,
                     from_address: str = None,
                     to_address: str = None,
                     source: List[str] = None,
@@ -1291,24 +1291,24 @@ class Client:
         args["to"] = args.pop("to_address")
         args["price"] = args.pop("price_range")
         args["block_time"] = args.pop("block_time_range")
-        return self.get(pro_base_url, "/nft/activity", locals())
+        return await self.get(pro_base_url, "/nft/activity", locals())
 
-    def nft_collection_list(self,
+    async def nft_collection_list(self,
                              sort_by: NFTCollectionSortBy = NFTCollectionSortBy.FLOOR_PRICE,
                              sort_order: SortOrder = SortOrder.DESC,
                              page: int = 1,
                              page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10,
                              collection: str = None,
                              ) -> List[NFTCollection]:
-        return self.get(pro_base_url, "/nft/collection/lists", locals())
+        return await self.get(pro_base_url, "/nft/collection/lists", locals())
     
-    def nft_collection_items(self,
+    async def nft_collection_items(self,
                              collection: str,
                              sort_by: NFTCollectionItemSortBy = NFTCollectionItemSortBy.LAST_TRADE,
                              page: int = 1,
                              page_size: TinyPageSize = TinyPageSize.PAGE_SIZE_12,
                              ) -> List[NFTCollectionItem]:
-        return self.get(pro_base_url, "/nft/collection/items", locals())
+        return await self.get(pro_base_url, "/nft/collection/items", locals())
 
 
 if __name__ == "__main__":
