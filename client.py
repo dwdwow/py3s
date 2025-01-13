@@ -42,7 +42,7 @@ import time
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 import getpass
-from typing import Any, TypeVar, TypedDict, List
+from typing import Any, Awaitable, Callable, Coroutine, TypeVar, TypedDict, List
 from pyrate_limiter import Duration, Limiter, Rate
 from loguru import logger
 import requests
@@ -860,6 +860,31 @@ class Client:
             except Exception as e:
                 logger.error(f"Solscan Client GET Error: {e}")
                 time.sleep(1)
+                
+    async def massive_get(self, tasker: Callable[[], Awaitable[D]], kwargs: dict[str, Any], _must: bool=True) -> D:
+        del kwargs["self"]
+        total_size = kwargs.pop("total_size")
+        page_size = kwargs["page_size"].value
+        page_num = math.ceil(total_size / page_size)
+        group_size = self._max_requests_per_minute
+        group_num = math.ceil(page_num / group_size)
+        logger.info(f"Massive getting {total_size} items, {page_size} per page, {page_num} pages, {group_size} per group, {group_num} groups, tasker: {tasker.__name__}")
+        all_data = []
+        for group in range(group_num):
+            start_page = group * group_size + 1
+            end_page = min((group + 1) * group_size, page_num)
+            tasks = []
+            for page in range(start_page, end_page+1):
+                tasks.append(tasker(**kwargs, page=page, _must=_must))
+            start_time = time.time()
+            results = await asyncio.gather(*tasks)
+            end_time = time.time()
+            duration = end_time - start_time
+            for result in results:
+                all_data.extend(result)
+            if group < group_num-1:
+                time.sleep(max(0.1, 60 - duration+0.1))
+        return all_data[:total_size]
 
     async def chain_info(self) -> RespData[ChainInfo]:
         return await self.get(public_base_url, "chaininfo")
@@ -1373,40 +1398,10 @@ class Client:
                        amount_range:List[int] = None,
                        block_time_range:List[int] = None,
                        exclude_amount_zero:bool=False,
+                       page_size:LargePageSize = LargePageSize.PAGE_SIZE_100,
                        sort_by:SortBy = SortBy.BLOCK_TIME,
                        sort_order:SortOrder = SortOrder.DESC) -> List[Transfer]:
-        page_size = LargePageSize.PAGE_SIZE_100
-        pages = math.ceil(total_size / page_size.value)
-        group_size = self._max_requests_per_minute
-        groups = math.ceil(pages / group_size)
-        all_transfers = []
-        for group in range(groups):
-            start_page = group * group_size + 1
-            end_page = min((group + 1) * group_size, pages)
-            tasks = []
-            for page in range(start_page, end_page+1):
-                tasks.append(self.token_transfers(
-                    address,
-                    activity_type=activity_type,
-                    from_address=from_address,
-                    to_address=to_address,
-                    amount_range=amount_range,
-                    block_time_range=block_time_range,
-                    exclude_amount_zero=exclude_amount_zero,
-                    page=page,
-                    page_size=page_size,
-                    sort_by=sort_by,
-                    sort_order=sort_order,
-                    _must=True
-                ))
-            start_time = time.time()
-            transfers = await asyncio.gather(*tasks)
-            end_time = time.time()
-            duration = end_time - start_time
-            all_transfers.extend(transfers)
-            if group < groups-1:
-                time.sleep(max(0.1, 60 - duration+0.1))
-        return all_transfers
+        return await self.massive_get(self.token_transfers, locals())  
 
 
 if __name__ == "__main__":
@@ -1416,4 +1411,6 @@ if __name__ == "__main__":
     token_file = os.path.join(home, "test_tokens/solscan_auth_token")
     print(token_file)
     client = Client(auth_token_file_path=token_file)
-    print(asyncio.run(client.massive_token_transfers("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=1000)))
+    data = asyncio.run(client.massive_token_transfers("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=4000))
+    print(len(data))
+    print(data[0])
