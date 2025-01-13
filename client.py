@@ -776,7 +776,7 @@ class Client:
             decrypted_bytes = unpad(cipher.decrypt(ciphertext), AES.block_size)
             auth_token = decrypted_bytes.decode('utf-8')
         self._headers = {"content-type": "application/json", "token": auth_token}
-        self._max_requests_per_minute = math.max(1, max_requests_per_minute-10)
+        self._max_requests_per_minute = max(1, max_requests_per_minute-10)
         # self._max_requests_per_second = self._max_requests_per_minute / 60
         self._limiter = Limiter(Rate(self._max_requests_per_minute, Duration.MINUTE))
 
