@@ -1434,6 +1434,6 @@ if __name__ == "__main__":
     token_file = os.path.join(home, "test_tokens/solscan_auth_token")
     print(token_file)
     client = Client(auth_token_file_path=token_file)
-    data = asyncio.run(client.massive_token_defi_activities("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=4000))
+    data = asyncio.run(client.massive_token_defi_activities("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=100000))
     print(len(data))
     print(data[0])
