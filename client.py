@@ -1191,8 +1191,9 @@ class Client:
                         page: int = 1,
                         page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10,
                         from_amount: str=None,
-                        to_amount: str=None) -> List[TokenHolder]:
-        return self.get(pro_base_url, "/token/holders", locals())
+                        to_amount: str=None) -> tuple[int, List[TokenHolder]]:
+        data = self.get(pro_base_url, "/token/holders", locals())
+        return data["total"], data["items"]
     
     def token_meta(self, address: str) -> TokenMeta:
         return self.get(pro_base_url, "/token/meta", locals())
@@ -1212,8 +1213,9 @@ class Client:
     def block_last(self, limit: LargePageSize=LargePageSize.PAGE_SIZE_100) -> BlockDetail:
         return self.get(pro_base_url, "/block/last", locals())
 
-    def block_transactions(self, block: int, page: int = 1, page_size: LargePageSize = LargePageSize.PAGE_SIZE_100) -> List[Transaction]:
-        return self.get(pro_base_url, "/block/transactions", locals())
+    def block_transactions(self, block: int, page: int = 1, page_size: LargePageSize = LargePageSize.PAGE_SIZE_100) -> tuple[int, List[Transaction]]:
+        data = self.get(pro_base_url, "/block/transactions", locals())
+        return data["total"], data["transactions"]
 
     def block_detail(self, block: int) -> BlockDetail:
         return self.get(pro_base_url, "/block/detail", locals())
