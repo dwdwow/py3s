@@ -886,6 +886,7 @@ class Client:
             for result in results:
                 all_data.extend(result)
             if group < group_num-1:
+                logger.info(f"Sleeping {max(0.1, 60 - duration+0.1)} seconds")
                 time.sleep(max(0.1, 60 - duration+0.1))
         return all_data[:total_size]
 
