@@ -34,7 +34,11 @@ The client provides methods for:
 - Market data and analytics
 """
 
+import base64
 from enum import Enum
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+import getpass
 from typing import Any, TypeVar, TypedDict, List
 import requests
 
@@ -729,14 +733,40 @@ class Client:
         >>> print(chain_info["blockHeight"])
         12345
     """
-    def __init__(self, auth_token: str):
+    
+    def __init__(self, auth_token: str=None, auth_token_file_path: str=None, aes_256_hex_password: str=None):
+        """Initialize a new Solscan API client.
+
+        Args:
+            auth_token (str, optional): The authentication token string. Defaults to None.
+            auth_token_file (str, optional): Path to file containing the auth token. Defaults to None.
+            aes_256_hex_password (str, optional): 64-character hex password for decrypting auth token. Defaults to None.
+
+        Raises:
+            Exception: If aes_256_hex_password is provided but not 64 characters long.
+            Exception: If neither auth_token nor auth_token_file is provided.
+            Exception: If auth_token_file cannot be read.
+            Exception: If decryption fails with the provided password.
+        """
+
+        if not auth_token and not auth_token_file_path:
+            raise Exception("Must provide either auth_token or auth_token_file")
+        if auth_token_file_path:
+            with open(auth_token_file_path, "r") as f:
+                auth_token = f.read()
+                auth_token = auth_token.strip("\n\r\t ")
+        if not aes_256_hex_password:
+            aes_256_hex_password = getpass.getpass("Enter solscan auth token decryption password(if have not, just press enter): ")
+        if aes_256_hex_password:
+            if len(aes_256_hex_password) != 64:
+                raise Exception("Hex Password must be 64 characters long")
+            encrypted_bytes = base64.b64decode(auth_token.encode('utf-8'))
+            iv = encrypted_bytes[:AES.block_size]
+            ciphertext = encrypted_bytes[AES.block_size:]
+            cipher = AES.new(bytes.fromhex(aes_256_hex_password), AES.MODE_CBC, iv)
+            decrypted_bytes = unpad(cipher.decrypt(ciphertext), AES.block_size)
+            auth_token = decrypted_bytes.decode('utf-8')
         self.__headers = {"content-type": "application/json", "token": auth_token}
-            
-    def __init__(self, auth_token_file: str):
-        with open(auth_token_file, "r") as f:
-            auth_token = f.read()
-            auth_token = auth_token.strip("\n\r\t ")
-            self.__headers = {"content-type": "application/json", "token": auth_token}
 
     def get(self, base_url: str, path: str, kwargs: dict[str, Any]=None, export: bool = False) -> D:
         """Makes a GET request to the Solscan API.
