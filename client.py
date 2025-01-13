@@ -780,7 +780,7 @@ class Client:
         # self._max_requests_per_second = self._max_requests_per_minute / 60
         self._limiter = Limiter(Rate(self._max_requests_per_minute, Duration.MINUTE))
 
-    async def get(self, base_url: str, path: str, kwargs: dict[str, Any]=None, export: bool = False) -> D:
+    async def get(self, base_url: str, path: str, kwargs: dict[str, Any]=None, *, export: bool = False) -> D:
         """Makes a GET request to the Solscan API.
 
         Args:
@@ -805,7 +805,7 @@ class Client:
         if kwargs:
             kvs = []
         for key, value in kwargs.items():
-            if value is None or key == "self":
+            if value is None or key == "self" or key == "_must":
                 continue
             elif isinstance(value, list):
                 for v in value:
@@ -819,6 +819,7 @@ class Client:
         if kvs:
             query_params = "&".join(kvs)
             url = f"{url}?{query_params}"
+        must = kwargs.get("_must", False)
         i = 0
         while True:
             if i > 0:
@@ -826,11 +827,13 @@ class Client:
             i += 1
             try:
                 self._limiter.try_acquire("get")
+                resp = await asyncio.to_thread(requests.get, url, headers=self._headers)
                 break
             except Exception as e:
-                logger.warning(f"Solscan Client Limiter: {e}")
+                if not must:
+                    raise e
+                logger.error(f"Solscan Client Limiter: {e}")
                 time.sleep(1)
-        resp = await asyncio.to_thread(requests.get, url, headers=self._headers)
         if resp.status_code == 200:
             if export:
                 return resp.content
@@ -849,19 +852,19 @@ class Client:
         else:
             raise Exception(f"{resp.status_code}: {resp.text}")
         
-    async def must_get(self, base_url: str, path: str, kwargs: dict[str, Any]=None, export: bool = False) -> D:
-        i = 0
-        while True:
-            if i > 0:
-                logger.warning(f"Retrying {i} times, {path}")
-            i += 1
-            try:
-                return await self.get(base_url, path, kwargs, export)
-            except Exception as e:
-                logger.error(f"Solscan Client GET Error: {e}")
-                time.sleep(1)
+    # async def must_get(self, base_url: str, path: str, kwargs: dict[str, Any]=None, export: bool = False) -> D:
+    #     i = 0
+    #     while True:
+    #         if i > 0:
+    #             logger.warning(f"Retrying {i} times, {path}")
+    #         i += 1
+    #         try:
+    #             return await self.get(base_url, path, kwargs, export)
+    #         except Exception as e:
+    #             logger.error(f"Solscan Client GET Error: {e}")
+    #             time.sleep(1)
                 
-    async def massive_get(self, tasker: Callable[[], Awaitable[D]], kwargs: dict[str, Any], _must: bool=True) -> D:
+    async def massive_get(self, tasker: Callable[[], Awaitable[D]], kwargs: dict[str, Any]) -> D:
         del kwargs["self"]
         total_size = kwargs.pop("total_size")
         page_size = kwargs["page_size"].value
@@ -875,7 +878,7 @@ class Client:
             end_page = min((group + 1) * group_size, page_num)
             tasks = []
             for page in range(start_page, end_page+1):
-                tasks.append(tasker(**kwargs, page=page, _must=_must))
+                tasks.append(tasker(**kwargs, page=page))
             start_time = time.time()
             results = await asyncio.gather(*tasks)
             end_time = time.time()
@@ -1122,6 +1125,7 @@ class Client:
                        sort_order:SortOrder = SortOrder.DESC,
                        _must: bool=False) -> List[Transfer]:
         """Get token transfer history.
+        If want to get massive data, use massive_token_transfers instead.
         
         Args:
             address (str): Token address to get transfers for
@@ -1135,6 +1139,7 @@ class Client:
             page_size (LargePageSize, optional): Number of results per page. Defaults to 10.
             sort_by (SortBy, optional): Field to sort by. Defaults to block_time.
             sort_order (SortOrder, optional): Sort order (asc/desc). Defaults to DESC.
+            _must (bool, optional): Whether to use must_get. Defaults to False.
 
         Returns:
             List[Transfer]: List of token transfers
@@ -1158,10 +1163,23 @@ class Client:
         args["to"] = args.pop("to_address")
         args["amount"] = args.pop("amount_range")
         args["block_time"] = args.pop("block_time_range")
-        del args["_must"]
-        if _must:
-            return await self.must_get(pro_base_url, "/token/transfer", args)
         return await self.get(pro_base_url, "/token/transfer", args)
+    
+    async def massive_token_transfers(self,
+                       address:str,
+                       *,
+                       total_size: int = LargePageSize.PAGE_SIZE_100.value,
+                       activity_type:ActivityType = None,
+                       from_address:str = None,
+                       to_address:str = None,
+                       amount_range:List[int] = None,
+                       block_time_range:List[int] = None,
+                       exclude_amount_zero:bool=False,
+                       page_size:LargePageSize = LargePageSize.PAGE_SIZE_100,
+                       sort_by:SortBy = SortBy.BLOCK_TIME,
+                       sort_order:SortOrder = SortOrder.DESC,
+                       _must: bool=True) -> List[Transfer]:
+        return await self.massive_get(self.token_transfers, locals())  
 
     async def token_defi_activities(self,
                              address:str,
@@ -1175,9 +1193,12 @@ class Client:
                              page:int = 1,
                              page_size:LargePageSize = LargePageSize.PAGE_SIZE_10,
                              sort_by:SortBy = SortBy.BLOCK_TIME,
-                             sort_order:SortOrder = SortOrder.DESC) -> List[DefiActivity]:
+                             sort_order:SortOrder = SortOrder.DESC,
+                             _must: bool=False) -> List[DefiActivity]:
         """Get DeFi activities for a token.
         
+        If want to get massive data, use massive_token_defi_activities instead.
+
         Args:
             address (str): Token address to get activities for
             from_address (str, optional): Filter by sender address. Defaults to None.
@@ -1190,6 +1211,7 @@ class Client:
             page_size (LargePageSize, optional): Number of results per page. Defaults to 10.
             sort_by (SortBy, optional): Field to sort by. Defaults to block_time.
             sort_order (SortOrder, optional): Sort order (asc/desc). Defaults to DESC.
+            _must (bool, optional): Whether to use must_get. Defaults to False.
 
         Returns:
             List[DefiActivity]: List of DeFi activities
@@ -1212,6 +1234,22 @@ class Client:
         args["from"] = args.pop("from_address")
         args["block_time"] = args.pop("block_time_range")
         return await self.get(pro_base_url, "/token/defi/activities", args)
+    
+    async def massive_token_defi_activities(self,
+                             address:str,
+                             *,
+                             total_size: int = LargePageSize.PAGE_SIZE_100.value,
+                             from_address:str = None,
+                             platform:List[str] = None,
+                             source:List[str] = None,
+                             activity_type:ActivityType = None,
+                             token:str = None,
+                             block_time_range:List[int] = None,
+                             page_size:LargePageSize = LargePageSize.PAGE_SIZE_100,
+                             sort_by:SortBy = SortBy.BLOCK_TIME,
+                             sort_order:SortOrder = SortOrder.DESC,
+                             _must: bool=True) -> List[DefiActivity]:
+        return await self.massive_get(self.token_defi_activities, locals())
     
     async def token_markets(self,
                       token_pair:List[str],
@@ -1388,21 +1426,6 @@ class Client:
                              ) -> List[NFTCollectionItem]:
         return await self.get(pro_base_url, "/nft/collection/items", locals())
     
-    async def massive_token_transfers(self,
-                       address:str,
-                       *,
-                       total_size: int = LargePageSize.PAGE_SIZE_100.value,
-                       activity_type:ActivityType = None,
-                       from_address:str = None,
-                       to_address:str = None,
-                       amount_range:List[int] = None,
-                       block_time_range:List[int] = None,
-                       exclude_amount_zero:bool=False,
-                       page_size:LargePageSize = LargePageSize.PAGE_SIZE_100,
-                       sort_by:SortBy = SortBy.BLOCK_TIME,
-                       sort_order:SortOrder = SortOrder.DESC) -> List[Transfer]:
-        return await self.massive_get(self.token_transfers, locals())  
-
 
 if __name__ == "__main__":
     import os
@@ -1411,6 +1434,6 @@ if __name__ == "__main__":
     token_file = os.path.join(home, "test_tokens/solscan_auth_token")
     print(token_file)
     client = Client(auth_token_file_path=token_file)
-    data = asyncio.run(client.massive_token_transfers("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=4000))
+    data = asyncio.run(client.massive_token_defi_activities("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=4000))
     print(len(data))
     print(data[0])
