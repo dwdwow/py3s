@@ -1042,7 +1042,7 @@ class Client:
         args["block_time"] = args.pop("block_time_range")
         return self.get(pro_base_url, "/account/transfer/export", args, export=True)
     
-    def token_trasfers(self,
+    def token_transfers(self,
                        address:str,
                        activity_type:ActivityType = None,
                        from_address:str = None,
