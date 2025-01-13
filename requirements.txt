@@ -1,0 +1,4 @@
+loguru==0.7.3
+pycryptodome==3.21.0
+pyrate_limiter==3.7.0
+Requests==2.32.3
