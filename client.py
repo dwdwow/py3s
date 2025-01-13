@@ -34,16 +34,25 @@ The client provides methods for:
 - Market data and analytics
 """
 
+import asyncio
 import base64
 from enum import Enum
+import math
+import time
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 import getpass
 from typing import Any, TypeVar, TypedDict, List
+from pyrate_limiter import Duration, Limiter, Rate
+from loguru import logger
 import requests
+
 
 public_base_url = "https://public-api.solscan.io"
 pro_base_url = "https://pro-api.solscan.io/v2.0"
+
+v2_max_requests_per_minute = 1000
+v3_max_requests_per_minute = 2000
 
 D = TypeVar("D")
 
@@ -734,19 +743,19 @@ class Client:
         12345
     """
     
-    def __init__(self, auth_token: str=None, auth_token_file_path: str=None, aes_256_hex_password: str=None):
+    def __init__(self, auth_token: str=None, auth_token_file_path: str=None, aes_256_hex_password: str=None, max_requests_per_minute: int=v2_max_requests_per_minute):
         """Initialize a new Solscan API client.
 
         Args:
-            auth_token (str, optional): The authentication token string. Defaults to None.
-            auth_token_file (str, optional): Path to file containing the auth token. Defaults to None.
-            aes_256_hex_password (str, optional): 64-character hex password for decrypting auth token. Defaults to None.
+            auth_token (str, optional): The authentication token string. Either this or auth_token_file_path must be provided.
+            auth_token_file_path (str, optional): Path to file containing the auth token. Either this or auth_token must be provided.
+            aes_256_hex_password (str, optional): 64-character hex password for decrypting an encrypted auth token. If not provided but token is encrypted, will prompt for password.
+            max_requests_per_minute (int, optional): Maximum API requests allowed per minute. Defaults to v2_max_requests_per_minute.
 
         Raises:
-            Exception: If aes_256_hex_password is provided but not 64 characters long.
-            Exception: If neither auth_token nor auth_token_file is provided.
-            Exception: If auth_token_file cannot be read.
-            Exception: If decryption fails with the provided password.
+            Exception: If neither auth_token nor auth_token_file_path is provided
+            Exception: If aes_256_hex_password is provided but not 64 characters long
+            Exception: If auth token decryption fails
         """
 
         if not auth_token and not auth_token_file_path:
@@ -766,7 +775,10 @@ class Client:
             cipher = AES.new(bytes.fromhex(aes_256_hex_password), AES.MODE_CBC, iv)
             decrypted_bytes = unpad(cipher.decrypt(ciphertext), AES.block_size)
             auth_token = decrypted_bytes.decode('utf-8')
-        self.__headers = {"content-type": "application/json", "token": auth_token}
+        self._headers = {"content-type": "application/json", "token": auth_token}
+        self._max_requests_per_minute = math.max(1, max_requests_per_minute-10)
+        # self._max_requests_per_second = self._max_requests_per_minute / 60
+        self._limiter = Limiter(Rate(self._max_requests_per_minute, Duration.MINUTE))
 
     async def get(self, base_url: str, path: str, kwargs: dict[str, Any]=None, export: bool = False) -> D:
         """Makes a GET request to the Solscan API.
@@ -807,7 +819,18 @@ class Client:
         if kvs:
             query_params = "&".join(kvs)
             url = f"{url}?{query_params}"
-        resp = requests.get(url, headers=self.__headers)
+        i = 0
+        while True:
+            if i > 0:
+                logger.warning(f"Retrying {i} times, {url}")
+            i += 1
+            try:
+                self._limiter.try_acquire("get")
+                break
+            except Exception as e:
+                logger.warning(f"Solscan Client Limiter: {e}")
+                time.sleep(1)
+        resp = await asyncio.to_thread(requests.get, url, headers=self._headers)
         if resp.status_code == 200:
             if export:
                 return resp.content
@@ -1309,8 +1332,53 @@ class Client:
                              page_size: TinyPageSize = TinyPageSize.PAGE_SIZE_12,
                              ) -> List[NFTCollectionItem]:
         return await self.get(pro_base_url, "/nft/collection/items", locals())
+    
+    async def massive_token_transfers(self,
+                       address:str,
+                       total_size: int = LargePageSize.PAGE_SIZE_100.value,
+                       activity_type:ActivityType = None,
+                       from_address:str = None,
+                       to_address:str = None,
+                       amount_range:List[int] = None,
+                       block_time_range:List[int] = None,
+                       exclude_amount_zero:bool=False,
+                       sort_by:SortBy = SortBy.BLOCK_TIME,
+                       sort_order:SortOrder = SortOrder.DESC) -> List[Transfer]:
+        pages = math.ceil(total_size / LargePageSize.PAGE_SIZE_100.value)
+        group_size = self._max_requests_per_minute
+        groups = math.ceil(pages / group_size)
+        all_transfers = []
+        for group in range(groups):
+            start_page = group * group_size + 1
+            end_page = min((group + 1) * group_size, pages)
+            tasks = []
+            for page in range(start_page, end_page+1):
+                tasks.append(self.token_transfers(
+                    address,
+                    activity_type=activity_type,
+                    from_address=from_address,
+                    to_address=to_address,
+                    amount_range=amount_range,
+                    block_time_range=block_time_range,
+                    exclude_amount_zero=exclude_amount_zero,
+                    page=page,
+                    page_size=group_size,
+                    sort_by=sort_by,
+                    sort_order=sort_order,
+                ))
+            start_time = time.time()
+            transfers = await asyncio.gather(*tasks)
+            end_time = time.time()
+            duration = end_time - start_time
+            all_transfers.extend(transfers)
+            time.sleep(time.max(0.1, 60 - duration+0.1))
+        return all_transfers
 
 
 if __name__ == "__main__":
-    client = Client("test_token.txt")
+    import os
+    import pathlib
+    home = str(pathlib.Path.home())
+    token_file = os.path.join(home, "test_tokens/solscan_auth_token")
+    client = Client(token_file)
     print(client.nft_collection_items("fc8dd31116b25e6690d83f6fb102e67ac6a9364dc2b96285d636aed462c4a983"))
