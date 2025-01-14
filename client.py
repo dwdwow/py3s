@@ -780,7 +780,7 @@ class Client:
         # self._max_requests_per_second = self._max_requests_per_minute / 60
         self._limiter = Limiter(Rate(self._max_requests_per_minute, Duration.MINUTE))
 
-    async def get(self, base_url: str, path: str, kwargs: dict[str, Any]=None, *, export: bool = False) -> D:
+    async def get(self, base_url: str, path: str, kwargs: dict[str, Any]={}, *, export: bool = False) -> D:
         """Makes a GET request to the Solscan API.
 
         Args:
@@ -802,8 +802,7 @@ class Client:
             - 500: Internal Server Error - Server-side error
         """
         url = f"{base_url}/{path.lstrip('/')}"
-        if kwargs:
-            kvs = []
+        kvs = []
         for key, value in kwargs.items():
             if value is None or key == "self" or key == "_must":
                 continue
@@ -880,11 +879,21 @@ class Client:
             end_time = time.time()
             duration = end_time - start_time
             for result in results:
-                all_data.extend(result)
+                if isinstance(result, tuple):
+                    all_data.append(result)
+                else:
+                    all_data.extend(result)
             if group < group_num-1:
                 logger.info(f"Sleeping {max(0.1, 60 - duration+0.1)} seconds")
                 time.sleep(max(0.1, 60 - duration+0.1))
         return all_data[:total_size]
+    
+    async def test_speed(self):
+        start_time = time.time()
+        await self.get(public_base_url, "chaininfo")
+        end_time = time.time()
+        duration = end_time - start_time
+        logger.info(f"Test speed: {duration} seconds")
 
     async def chain_info(self) -> RespData[ChainInfo]:
         return await self.get(public_base_url, "chaininfo")
@@ -1317,10 +1326,9 @@ class Client:
         num = 0
         holders = []
         for h in await self.massive_get(self.token_holders, args):
-            print(h)
-            holders.append(h[1])
+            holders.extend(h[1])
             num = h[0]
-        return num, holders
+        return num, holders[:total_size]
     
     async def token_meta(self, address: str) -> TokenMeta:
         return await self.get(pro_base_url, "/token/meta", locals())
@@ -1449,6 +1457,8 @@ if __name__ == "__main__":
     token_file = os.path.join(home, "test_tokens/solscan_auth_token")
     print(token_file)
     client = Client(auth_token_file_path=token_file)
-    data = asyncio.run(client.massive_token_holders("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=100))
-    print(len(data))
-    print(data[0])
+    # num, data = asyncio.run(client.massive_token_holders("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=100))
+    # print(num)
+    # print(len(data))
+    # print(data[0])
+    asyncio.run(client.test_speed())
