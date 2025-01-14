@@ -918,7 +918,7 @@ class Client:
                            page: int = 1,
                            page_size: LargePageSize = LargePageSize.PAGE_SIZE_10,
                            sort_order: SortOrder = SortOrder.DESC,
-                           ) -> List[Transfer]:
+                           _must: bool = False) -> List[Transfer]:
         """Get account transfer history.
         
         Args:
@@ -957,6 +957,24 @@ class Client:
         args["amount"] = args.pop("amount_range")
         args["block_time"] = args.pop("block_time_range")
         return await self.get(pro_base_url, "/account/transfer", args)
+
+    async def massive_account_transfers(self,
+                           address: str,
+                           *,
+                           total_size: int = LargePageSize.PAGE_SIZE_100,
+                           activity_type: AccountActivityType = None,
+                           token_account: str = None,
+                           from_address: str = None,
+                           to_address: str = None,
+                           token: str = None,
+                           amount_range: List[int] = None,
+                           block_time_range: List[int] = None,
+                           exclude_amount_zero: bool = False,
+                           flow: Flow = None,
+                           page_size: LargePageSize = LargePageSize.PAGE_SIZE_100,
+                           sort_order: SortOrder = SortOrder.DESC,
+                           _must: bool = True) -> List[Transfer]:
+        return await self.massive_get(self.account_transfers, locals())
     
     async def account_token_accounts(self,
                        address: str,
@@ -964,8 +982,19 @@ class Client:
                        type: TokenType = TokenType.TOKEN,
                        page: int = 1,
                        page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10,
-                       hide_zero: bool = False) -> List[TokenAccount]:
+                       hide_zero: bool = False,
+                       _must: bool = False) -> List[TokenAccount]:
         return await self.get(pro_base_url, "/account/token-accounts", locals())
+
+    async def massive_account_token_accounts(self,
+                       address: str,
+                           *,
+                       total_size: int = SmallPageSize.PAGE_SIZE_40,
+                       type: TokenType = TokenType.TOKEN,
+                       page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_40,
+                       hide_zero: bool = False,
+                       _must: bool = True) -> List[TokenAccount]:
+        return await self.massive_get(self.account_token_accounts, locals())
     
     async def account_defi_activities(self,
                         address: str,
@@ -979,7 +1008,8 @@ class Client:
                         page: int = 1,
                         page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10,
                         sort_by: SortBy = SortBy.BLOCK_TIME,
-                        sort_order: SortOrder = SortOrder.DESC) -> List[DefiActivity]:
+                        sort_order: SortOrder = SortOrder.DESC,
+                        _must: bool = False) -> List[DefiActivity]:
         """Get DeFi activities for an account.
 
         Args:
@@ -1014,6 +1044,22 @@ class Client:
         args["from"] = args.pop("from_address")
         args["block_time"] = args.pop("block_time_range")
         return await self.get(pro_base_url, "/account/defi/activities", args)
+
+    async def massive_account_defi_activities(self,
+                        address: str,
+                           *,
+                        total_size: int = SmallPageSize.PAGE_SIZE_40,
+                        activity_type: ActivityType = None,
+                        from_address: str = None,
+                        platform: List[str] = None,
+                        source: List[str] = None,
+                        token: str = None,
+                        block_time_range: List[int] = None,
+                        page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_40,
+                        sort_by: SortBy = SortBy.BLOCK_TIME,
+                        sort_order: SortOrder = SortOrder.DESC,
+                        _must: bool = True) -> List[DefiActivity]:
+        return await self.massive_get(self.account_defi_activities, locals())
     
     async def account_balance_changes(self,
                         address: str,
@@ -1026,7 +1072,8 @@ class Client:
                         remove_spam: bool = True,
                         flow: Flow = None,
                         sort_by: SortBy = SortBy.BLOCK_TIME,
-                        sort_order: SortOrder = SortOrder.DESC) -> List[AccountChangeActivity]:
+                        sort_order: SortOrder = SortOrder.DESC,
+                        _must: bool = False) -> List[AccountChangeActivity]:
         """Get balance change activities for an account.
 
         Args:
@@ -1060,9 +1107,35 @@ class Client:
         args["amount"] = args.pop("amount_range")
         args["block_time"] = args.pop("block_time_range")
         return await self.get(pro_base_url, "/account/balance_change", args)
+
+    async def massive_account_balance_changes(self,
+                        address: str,
+                           *,
+                        total_size: int = LargePageSize.PAGE_SIZE_100,
+                        token: str = None,
+                        amount_range: List[int] = None,
+                        block_time_range: List[int] = None,
+                        page_size: LargePageSize = LargePageSize.PAGE_SIZE_100,
+                        remove_spam: bool = True,
+                        flow: Flow = None,
+                        sort_by: SortBy = SortBy.BLOCK_TIME,
+                        sort_order: SortOrder = SortOrder.DESC,
+                        _must: bool = True) -> List[AccountChangeActivity]:
+        return await self.massive_get(self.account_balance_changes, locals())
     
-    async def account_transactions(self, address: str, *, limit: SmallPageSize=SmallPageSize.PAGE_SIZE_10) -> List[Transaction]:
+    async def account_transactions(self, address: str, *,before: str = None, limit: SmallPageSize=SmallPageSize.PAGE_SIZE_40, _must: bool = False) -> List[Transaction]:
         return await self.get(pro_base_url, "/account/transactions", locals())
+    
+    async def massive_account_transactions(self, address: str, *, total_size: int = SmallPageSize.PAGE_SIZE_40, before: str = None, limit: SmallPageSize=SmallPageSize.PAGE_SIZE_40, _must: bool = True) -> List[Transaction]:
+        trans = []
+        page_num = math.ceil(total_size / limit.value)
+        for i in range(page_num):
+            new_trans = await self.account_transactions(address, before=before, limit=limit, _must=_must)
+            if not new_trans:
+                break
+            trans.extend(new_trans)
+            before = new_trans[-1]["tx_hash"]
+        return trans[:total_size]
     
     async def account_stakes(self, address: str, *, page: int = 1, page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10) -> List[AccountStake]:
         return await self.get(pro_base_url, "/account/stake", locals())
@@ -1458,12 +1531,13 @@ class Client:
 if __name__ == "__main__":
     import os
     import pathlib
+    token = "HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC"
+    account = "1HBjhkQvVzNpLyp8REVjZTQ5NCR2qtMgiMNa2ViSA98"
     home = str(pathlib.Path.home())
     token_file = os.path.join(home, "test_tokens/solscan_auth_token_unencrypted")
     print(token_file)
     client = Client(auth_token_file_path=token_file)
-    # num, data = asyncio.run(client.massive_token_holders("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=100))
-    # print(num)
-    # print(len(data))
-    # print(data[0])
-    asyncio.run(client.test_speed())
+    data = asyncio.run(client.massive_account_transactions(account, total_size=100))
+    print(len(data))
+    for d in data:
+        print(d["tx_hash"], d["time"])
