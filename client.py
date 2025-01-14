@@ -1317,8 +1317,8 @@ class Client:
         num = 0
         holders = []
         for h in await self.massive_get(self.token_holders, args):
-            holders.append(h["items"])
-            num = h["total"]
+            holders.append(h[1])
+            num = h[0]
         return num, holders
     
     async def token_meta(self, address: str) -> TokenMeta:
