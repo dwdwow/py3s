@@ -38,6 +38,7 @@ import asyncio
 import base64
 from enum import Enum
 import math
+import statistics
 import time
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
@@ -889,11 +890,15 @@ class Client:
         return all_data[:total_size]
     
     async def test_speed(self):
-        start_time = time.time()
-        await self.get(public_base_url, "chaininfo")
-        end_time = time.time()
-        duration = end_time - start_time
-        logger.info(f"Test speed: {duration} seconds")
+        times = 10
+        durations = []
+        for i in range(times):
+            start_time = time.time()
+            await self.get(public_base_url, "chaininfo")
+            end_time = time.time()
+            duration = end_time - start_time
+            durations.append(duration)
+        logger.info(f"Test speed: {sum(durations)/times} seconds, max: {max(durations)}, min: {min(durations)}, std: {statistics.stdev(durations)}")
 
     async def chain_info(self) -> RespData[ChainInfo]:
         return await self.get(public_base_url, "chaininfo")
@@ -1454,7 +1459,7 @@ if __name__ == "__main__":
     import os
     import pathlib
     home = str(pathlib.Path.home())
-    token_file = os.path.join(home, "test_tokens/solscan_auth_token")
+    token_file = os.path.join(home, "test_tokens/solscan_auth_token_unencrypted")
     print(token_file)
     client = Client(auth_token_file_path=token_file)
     # num, data = asyncio.run(client.massive_token_holders("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=100))
