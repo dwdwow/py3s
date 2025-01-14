@@ -1317,6 +1317,7 @@ class Client:
         num = 0
         holders = []
         for h in await self.massive_get(self.token_holders, args):
+            print(h)
             holders.append(h[1])
             num = h[0]
         return num, holders
@@ -1448,6 +1449,6 @@ if __name__ == "__main__":
     token_file = os.path.join(home, "test_tokens/solscan_auth_token")
     print(token_file)
     client = Client(auth_token_file_path=token_file)
-    data = asyncio.run(client.massive_token_holders("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=10000))
+    data = asyncio.run(client.massive_token_holders("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=100))
     print(len(data))
     print(data[0])
