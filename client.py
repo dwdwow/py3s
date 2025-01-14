@@ -822,18 +822,26 @@ class Client:
         must = kwargs.get("_must", False)
         i = 0
         while True:
-            if i > 0:
-                logger.warning(f"Retrying {i} times, {url}")
             i += 1
             try:
                 self._limiter.try_acquire("get")
+                break
+            except Exception as e:
+                logger.error(f"Solscan client limiter waited {i} times: {e}")
+                time.sleep(1)
+        i = 0
+        while True:
+            i += 1
+            try:
                 resp = await asyncio.to_thread(requests.get, url, headers=self._headers)
                 break
             except Exception as e:
                 if not must:
                     raise e
-                logger.error(f"Solscan Client Limiter: {e}")
+                logger.error(f"Solscan client retry {i} times: {e}")
                 time.sleep(1)
+                if i == 60:
+                    return self.get(base_url, path, kwargs, export=export)
         if resp.status_code == 200:
             if export:
                 return resp.content
@@ -852,18 +860,6 @@ class Client:
         else:
             raise Exception(f"{resp.status_code}: {resp.text}")
         
-    # async def must_get(self, base_url: str, path: str, kwargs: dict[str, Any]=None, export: bool = False) -> D:
-    #     i = 0
-    #     while True:
-    #         if i > 0:
-    #             logger.warning(f"Retrying {i} times, {path}")
-    #         i += 1
-    #         try:
-    #             return await self.get(base_url, path, kwargs, export)
-    #         except Exception as e:
-    #             logger.error(f"Solscan Client GET Error: {e}")
-    #             time.sleep(1)
-                
     async def massive_get(self, tasker: Callable[[], Awaitable[D]], kwargs: dict[str, Any]) -> D:
         del kwargs["self"]
         total_size = kwargs.pop("total_size")
@@ -1302,11 +1298,28 @@ class Client:
                         address: str,
                         *,
                         page: int = 1,
-                        page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10,
+                        page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_40,
                         from_amount: str=None,
-                        to_amount: str=None) -> tuple[int, List[TokenHolder]]:
+                        to_amount: str=None,
+                        _must: bool=False) -> tuple[int, List[TokenHolder]]:
         data = await self.get(pro_base_url, "/token/holders", locals())
         return data["total"], data["items"]
+    
+    async def massive_token_holders(self,
+                             address: str,
+                             *,
+                             total_size: int = SmallPageSize.PAGE_SIZE_40.value,
+                             from_amount: str=None,
+                             to_amount: str=None,
+                             page_size:SmallPageSize = SmallPageSize.PAGE_SIZE_40,
+                             _must: bool=True) -> tuple[int, List[TokenHolder]]:
+        args = locals()
+        num = 0
+        holders = []
+        for h in await self.massive_get(self.token_holders, args):
+            holders.append(h["items"])
+            num = h["total"]
+        return num, holders
     
     async def token_meta(self, address: str) -> TokenMeta:
         return await self.get(pro_base_url, "/token/meta", locals())
@@ -1435,6 +1448,6 @@ if __name__ == "__main__":
     token_file = os.path.join(home, "test_tokens/solscan_auth_token")
     print(token_file)
     client = Client(auth_token_file_path=token_file)
-    data = asyncio.run(client.massive_token_defi_activities("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=100000))
+    data = asyncio.run(client.massive_token_holders("HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", total_size=10000))
     print(len(data))
     print(data[0])
