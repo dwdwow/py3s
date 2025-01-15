@@ -43,7 +43,7 @@ import time
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 import getpass
-from typing import Any, Awaitable, Callable, Coroutine, TypeVar, TypedDict, List
+from typing import Any, Awaitable, Callable, TypeVar, TypedDict, List
 from pyrate_limiter import Duration, Limiter, Rate
 from loguru import logger
 import requests
@@ -828,7 +828,7 @@ class Client:
                 break
             except Exception as e:
                 logger.error(f"Solscan client limiter waited {i} times: {e}")
-                time.sleep(1)
+                await asyncio.sleep(1)
         i = 0
         while True:
             i += 1
@@ -839,9 +839,9 @@ class Client:
                 if not must:
                     raise e
                 logger.error(f"Solscan client retry {i} times: {e}")
-                time.sleep(1)
+                await asyncio.sleep(1)
                 if i == 60:
-                    return self.get(base_url, path, kwargs, export=export)
+                    return await self.get(base_url, path, kwargs, export=export)
         if resp.status_code == 200:
             if export:
                 return resp.content
