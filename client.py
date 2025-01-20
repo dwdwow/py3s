@@ -961,7 +961,7 @@ class Client:
     async def massive_account_transfers(self,
                            address: str,
                            *,
-                           total_size: int = LargePageSize.PAGE_SIZE_100,
+                           total_size: int = LargePageSize.PAGE_SIZE_100.value,
                            activity_type: AccountActivityType = None,
                            token_account: str = None,
                            from_address: str = None,
@@ -989,7 +989,7 @@ class Client:
     async def massive_account_token_accounts(self,
                        address: str,
                            *,
-                       total_size: int = SmallPageSize.PAGE_SIZE_40,
+                       total_size: int = SmallPageSize.PAGE_SIZE_40.value,
                        type: TokenType = TokenType.TOKEN,
                        page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_40,
                        hide_zero: bool = False,
@@ -1048,7 +1048,7 @@ class Client:
     async def massive_account_defi_activities(self,
                         address: str,
                            *,
-                        total_size: int = SmallPageSize.PAGE_SIZE_40,
+                        total_size: int = SmallPageSize.PAGE_SIZE_40.value,
                         activity_type: ActivityType = None,
                         from_address: str = None,
                         platform: List[str] = None,
@@ -1111,7 +1111,7 @@ class Client:
     async def massive_account_balance_changes(self,
                         address: str,
                            *,
-                        total_size: int = LargePageSize.PAGE_SIZE_100,
+                        total_size: int = LargePageSize.PAGE_SIZE_100.value,
                         token: str = None,
                         amount_range: List[int] = None,
                         block_time_range: List[int] = None,
@@ -1126,7 +1126,7 @@ class Client:
     async def account_transactions(self, address: str, *,before: str = None, limit: SmallPageSize=SmallPageSize.PAGE_SIZE_40, _must: bool = False) -> List[Transaction]:
         return await self.get(pro_base_url, "/account/transactions", locals())
     
-    async def massive_account_transactions(self, address: str, *, total_size: int = SmallPageSize.PAGE_SIZE_40, before: str = None, limit: SmallPageSize=SmallPageSize.PAGE_SIZE_40, _must: bool = True) -> List[Transaction]:
+    async def massive_account_transactions(self, address: str, *, total_size: int = SmallPageSize.PAGE_SIZE_40.value, before: str = None, limit: SmallPageSize=SmallPageSize.PAGE_SIZE_40, _must: bool = True) -> List[Transaction]:
         trans = []
         page_num = math.ceil(total_size / limit.value)
         for i in range(page_num):
