@@ -850,18 +850,26 @@ class Client:
             start_page = group * group_size + 1
             end_page = min((group + 1) * group_size, page_num)
             tasks = []
+            logger.info(f"Getting group {group} from {start_page} to {end_page}")
             for page in range(start_page, end_page+1):
                 tasks.append(tasker(**kwargs, page=page))
             start_time = time.time()
             results = await asyncio.gather(*tasks)
             end_time = time.time()
             duration = end_time - start_time
+            has_no_more_data = False
+            num_of_data = 0
             for result in results:
                 if isinstance(result, tuple):
                     all_data.append(result)
                 else:
-                    all_data.extend(result)
-            if group < group_num-1:
+                    if len(result) == 0:
+                        has_no_more_data = True
+                    else:
+                        all_data.extend(result)
+                        num_of_data += len(result)
+            logger.info(f"Group {group} got {num_of_data} data")
+            if group < group_num-1 and not has_no_more_data:
                 logger.info(f"Sleeping {max(0.1, 60 - duration+0.1)} seconds")
                 time.sleep(max(0.1, 60 - duration+0.1))
         return all_data[:total_size]
