@@ -231,7 +231,7 @@ DefiActivity = TypedDict("DefiActivity", {
     "to_address": str,
     "sources": List[str],
     "platform": str,
-    "amount_info": AmountInfo,
+    # "amount_info": AmountInfo,
     "routers": List[Router]
 })
 
@@ -871,7 +871,7 @@ class Client:
         durations = []
         for i in range(times):
             start_time = time.time()
-            await self.get(public_base_url, "chaininfo")
+            await self.account_transfers("FG4Y3yX4AAchp1HvNZ7LfzFTewF2f6nDoMDCohTFrdpT")
             end_time = time.time()
             duration = end_time - start_time
             durations.append(duration)
@@ -1512,9 +1512,5 @@ if __name__ == "__main__":
     account = "1HBjhkQvVzNpLyp8REVjZTQ5NCR2qtMgiMNa2ViSA98"
     home = str(pathlib.Path.home())
     token_file = os.path.join(home, "test_tokens/solscan_auth_token_unencrypted")
-    print(token_file)
     client = Client(auth_token_file_path=token_file)
-    data = asyncio.run(client.massive_account_transactions(account, total_size=100))
-    print(len(data))
-    for d in data:
-        print(d["tx_hash"], d["time"])
+    data = asyncio.run(client.test_speed())
