@@ -1,38 +1,24 @@
 """
-Solscan API Client
+Python client for the Solscan API.
 
-This module provides a client for interacting with the Solscan API, both public and pro endpoints.
-
-The client handles authentication, request formatting, and response parsing. It provides strongly typed 
-responses using TypedDict definitions.
+This module provides a client for interacting with both the public and pro Solscan APIs.
+It handles authentication, rate limiting, and provides typed responses for API endpoints.
 
 Example:
-    >>> client = Client("auth_token.txt") 
-    >>> chain_info = client.chain_info()
-    >>> print(chain_info["blockHeight"])
-    12345
+    client = Client(auth_token_file_path="path/to/token")
+    chain_info = await client.chain_info()
 
-The client can be initialized either with:
-- A direct auth token string: Client("my_auth_token")
-- A file containing the token: Client("auth_token.txt")
+Rate Limits:
+    - V2 API: 1000 requests per minute
+    - V3 API: 2000 requests per minute
 
-Most methods return typed dictionaries containing the response data. See individual method docstrings
-for details on parameters and return types.
-
-Common HTTP errors are handled with descriptive exceptions:
-- 401: Unauthorized - Invalid/missing auth token
-- 403: Forbidden - Account lacks permission  
-- 404: Not Found - Invalid endpoint/resource
-- 429: Too Many Requests - Rate limit exceeded
-- 500: Internal Server Error - Server error
-
-The client provides methods for:
-- Chain info and statistics
-- Account details and history
-- Token details and transfers
-- NFT collections and activities
-- Market data and analytics
+Classes:
+    Client: Main client class for making API requests
+    Flow: Enum for specifying transaction flow direction
+    TinyPageSize: Enum for pagination sizes (12, 24, 36)
+    SmallPageSize: Enum for pagination sizes (50, 100)
 """
+
 
 import asyncio
 import base64
@@ -717,31 +703,22 @@ NFTCollectionItem = TypedDict("NFTCollectionItem", {
 
 class Client:
     """A client for interacting with the Solscan API.
-    
-    This client provides methods to query both the public and pro Solscan APIs.
-    It handles authentication and request formatting.
 
-    The client can be initialized either with an auth token string directly:
-        client = Client("my_auth_token")
-        
-    Or with a file containing the auth token:
-        client = Client("auth_token.txt")
+    The client handles authentication, rate limiting, and provides methods for accessing
+    various Solscan API endpoints. It supports both encrypted and unencrypted auth tokens.
 
-    Most methods return typed dictionaries containing the response data.
-    See the individual method docstrings for details on parameters and return types.
-
-    The client handles common HTTP errors and will raise exceptions with descriptive messages:
-        - 401: Unauthorized - Invalid or missing auth token
-        - 403: Forbidden - Account lacks permission
-        - 404: Not Found - Invalid endpoint or resource not found  
-        - 429: Too Many Requests - Rate limit exceeded
-        - 500: Internal Server Error - Server-side error
+    Attributes:
+        _headers (dict): HTTP headers including auth token
+        _max_requests_per_minute (int): Maximum allowed API requests per minute
+        _limiter (Limiter): Rate limiter to enforce request limits
 
     Example:
-        >>> client = Client("auth_token.txt")
-        >>> chain_info = client.chain_info()
-        >>> print(chain_info["blockHeight"])
-        12345
+        client = Client(auth_token="your_token_here")
+        # Or with a token file:
+        client = Client(auth_token_file_path="path/to/token.txt")
+
+        # Make API calls:
+        account_info = await client.account_info("wallet_address")
     """
     
     def __init__(self, *, auth_token: str=None, auth_token_file_path: str=None, aes_256_hex_password: str=None, max_requests_per_minute: int=v2_max_requests_per_minute):
