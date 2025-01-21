@@ -916,7 +916,7 @@ class Client:
                            exclude_amount_zero: bool = False,
                            flow: Flow = None,
                            page: int = 1,
-                           page_size: LargePageSize = LargePageSize.PAGE_SIZE_10,
+                           page_size: LargePageSize = LargePageSize.PAGE_SIZE_100,
                            sort_order: SortOrder = SortOrder.DESC,
                            _must: bool = False) -> List[Transfer]:
         """Get account transfer history.
@@ -981,7 +981,7 @@ class Client:
                            *,
                        type: TokenType = TokenType.TOKEN,
                        page: int = 1,
-                       page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10,
+                       page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_40,
                        hide_zero: bool = False,
                        _must: bool = False) -> List[TokenAccount]:
         return await self.get(pro_base_url, "/account/token-accounts", locals())
@@ -1006,7 +1006,7 @@ class Client:
                         token: str = None,
                         block_time_range: List[int] = None,
                         page: int = 1,
-                        page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10,
+                        page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_40,
                         sort_by: SortBy = SortBy.BLOCK_TIME,
                         sort_order: SortOrder = SortOrder.DESC,
                         _must: bool = False) -> List[DefiActivity]:
@@ -1068,7 +1068,7 @@ class Client:
                         amount_range: List[int] = None,
                         block_time_range: List[int] = None,
                         page: int = 1,
-                        page_size: LargePageSize = LargePageSize.PAGE_SIZE_10,
+                        page_size: LargePageSize = LargePageSize.PAGE_SIZE_100,
                         remove_spam: bool = True,
                         flow: Flow = None,
                         sort_by: SortBy = SortBy.BLOCK_TIME,
@@ -1137,7 +1137,7 @@ class Client:
             before = new_trans[-1]["tx_hash"]
         return trans[:total_size]
     
-    async def account_stakes(self, address: str, *, page: int = 1, page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10) -> List[AccountStake]:
+    async def account_stakes(self, address: str, *, page: int = 1, page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_40) -> List[AccountStake]:
         return await self.get(pro_base_url, "/account/stake", locals())
     
     async def account_detail(self, address: str) -> AccountDetail:
@@ -1204,7 +1204,7 @@ class Client:
                        block_time_range:List[int] = None,
                        exclude_amount_zero:bool=False,
                        page:int = 1,
-                       page_size:LargePageSize = LargePageSize.PAGE_SIZE_10,
+                       page_size:LargePageSize = LargePageSize.PAGE_SIZE_100,
                        sort_by:SortBy = SortBy.BLOCK_TIME,
                        sort_order:SortOrder = SortOrder.DESC,
                        _must: bool=False) -> List[Transfer]:
@@ -1275,7 +1275,7 @@ class Client:
                              token:str = None,
                              block_time_range:List[int] = None,
                              page:int = 1,
-                             page_size:LargePageSize = LargePageSize.PAGE_SIZE_10,
+                             page_size:LargePageSize = LargePageSize.PAGE_SIZE_100,
                              sort_by:SortBy = SortBy.BLOCK_TIME,
                              sort_order:SortOrder = SortOrder.DESC,
                              _must: bool=False) -> List[DefiActivity]:
@@ -1414,7 +1414,7 @@ class Client:
     async def token_top(self, *, limit:int = 10) -> List[TokenTop]:
         return await self.get(pro_base_url, "/token/top", locals())
     
-    async def tx_last(self, *, limit: LargePageSize = LargePageSize.PAGE_SIZE_10, filter: TxFilter = TxFilter.ALL) -> List[Transaction]:
+    async def tx_last(self, *, limit: LargePageSize = LargePageSize.PAGE_SIZE_100, filter: TxFilter = TxFilter.ALL) -> List[Transaction]:
         return await self.get(pro_base_url, "/transaction/last", locals())
 
     async def tx_detail(self, tx: str) -> TransactionDetail:
@@ -1454,7 +1454,7 @@ class Client:
     async def api_usage(self) -> APIUsage:
         return await self.get(pro_base_url, "/monitor/usage", locals())
 
-    async def news_nft(self, *, filter: str = "created_time", page: int = 1, page_size: TinyPageSize = TinyPageSize.PAGE_SIZE_12) -> List[NFTInfo]:
+    async def news_nft(self, *, filter: str = "created_time", page: int = 1, page_size: TinyPageSize = TinyPageSize.PAGE_SIZE_36) -> List[NFTInfo]:
         return await self.get(pro_base_url, "/nft/news", locals())
     
     async def nft_activity(self,
@@ -1513,7 +1513,7 @@ class Client:
                              sort_by: NFTCollectionSortBy = NFTCollectionSortBy.FLOOR_PRICE,
                              sort_order: SortOrder = SortOrder.DESC,
                              page: int = 1,
-                             page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_10,
+                             page_size: SmallPageSize = SmallPageSize.PAGE_SIZE_40,
                              collection: str = None,
                              ) -> List[NFTCollection]:
         return await self.get(pro_base_url, "/nft/collection/lists", locals())
@@ -1523,7 +1523,7 @@ class Client:
                              *,
                              sort_by: NFTCollectionItemSortBy = NFTCollectionItemSortBy.LAST_TRADE,
                              page: int = 1,
-                             page_size: TinyPageSize = TinyPageSize.PAGE_SIZE_12,
+                             page_size: TinyPageSize = TinyPageSize.PAGE_SIZE_36,
                              ) -> List[NFTCollectionItem]:
         return await self.get(pro_base_url, "/nft/collection/items", locals())
     
