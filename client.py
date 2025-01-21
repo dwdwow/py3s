@@ -1328,7 +1328,8 @@ class Client:
                    sort_by:TokenSortBy = TokenSortBy.PRICE,
                    sort_order:SortOrder = SortOrder.DESC,
                    page:int = 1,
-                   page_size:LargePageSize = LargePageSize.PAGE_SIZE_100) -> List[Token]:
+                   page_size:LargePageSize = LargePageSize.PAGE_SIZE_100,
+                   _must: bool=False) -> List[Token]:
         return await self.get(pro_base_url, "/token/list", locals())
     
     async def massive_token_list(self, *, total_size: int = LargePageSize.PAGE_SIZE_100.value, sort_by:TokenSortBy = TokenSortBy.PRICE, 
