@@ -1331,6 +1331,10 @@ class Client:
                    page_size:LargePageSize = LargePageSize.PAGE_SIZE_100) -> List[Token]:
         return await self.get(pro_base_url, "/token/list", locals())
     
+    async def massive_token_list(self, *, total_size: int = LargePageSize.PAGE_SIZE_100.value, sort_by:TokenSortBy = TokenSortBy.PRICE, 
+                                 sort_order:SortOrder = SortOrder.DESC, page_size:LargePageSize = LargePageSize.PAGE_SIZE_100, _must: bool=True) -> List[Token]:
+        return await self.massive_get(self.token_list, locals())
+    
     async def token_trending(self, *, limit:int = 10) -> List[Token]:
         return await self.get(pro_base_url, "/token/trending", locals())
 
