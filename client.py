@@ -872,6 +872,8 @@ class Client:
             if group < group_num-1 and not has_no_more_data:
                 logger.info(f"Sleeping {max(0.1, 60 - duration+0.1)} seconds")
                 time.sleep(max(0.1, 60 - duration+0.1))
+            if has_no_more_data:
+                break
         return all_data[:total_size]
     
     async def test_speed(self):
