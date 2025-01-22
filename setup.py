@@ -1,4 +1,11 @@
+import os
+import shutil
 from setuptools import setup
+
+# Remove build and dist directories if they exist
+for dir_name in ['build', 'dist']:
+    if os.path.exists(dir_name):
+        shutil.rmtree(dir_name)
 
 with open('version.txt', 'r') as f:
     version = f.read().strip("v\n\r\t ")
