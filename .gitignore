@@ -172,3 +172,4 @@ cython_debug/
 
 test_token.txt
 just_test.py
+version.txt
