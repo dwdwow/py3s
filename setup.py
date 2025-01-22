@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='py3s',
-    version='0.1.3',
+    version='0.1.4',
     packages=['py3s'],
     install_requires=[
         # List your package dependencies here
