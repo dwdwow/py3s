@@ -1,8 +1,11 @@
 from setuptools import setup
 
+with open('version.txt', 'r') as f:
+    version = f.read().strip("v\n\r\t ")
+
 setup(
     name='py3s',
-    version='0.1.4',
+    version=version,
     packages=['py3s'],
     install_requires=[
         # List your package dependencies here
